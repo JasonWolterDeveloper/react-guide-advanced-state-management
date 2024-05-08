@@ -1,4 +1,4 @@
-import { createContext, useState } from "react";
+import { createContext, useReducer } from "react";
 import { DUMMY_PRODUCTS } from "../dummy-products";
 
 export const CartContext = createContext({
@@ -7,14 +7,10 @@ export const CartContext = createContext({
     updateCartItemQuantity: () => {}
 })
 
-export default function CartContextProvider({ children }) {
-    const [shoppingCart, setShoppingCart] = useState({
-        items: [],
-      });
-    
-    function handleAddItemToCart(id) {
-    setShoppingCart((prevShoppingCart) => {
-        const updatedItems = [...prevShoppingCart.items];
+function shoppingCartReducer(state, action) {
+    if (action.type === 'ADD_ITEM') {
+        const id = action.payload;
+        const updatedItems = [...state.items];
 
         const existingCartItemIndex = updatedItems.findIndex(
         (cartItem) => cartItem.id === id
@@ -38,38 +34,65 @@ export default function CartContextProvider({ children }) {
         }
 
         return {
-        items: updatedItems,
+            ...state,
+            items: updatedItems,
         };
-    });
-    };
-
-    function handleUpdateCartItemQuantity(productId, amount) {
-    setShoppingCart((prevShoppingCart) => {
-        const updatedItems = [...prevShoppingCart.items];
+    }
+    else if (action.type === 'UPDATE_ITEM') {
+        const { productId, amount } = action.payload;
+        const updatedItems = [...state.items];
         const updatedItemIndex = updatedItems.findIndex(
-        (item) => item.id === productId
+            (item) => item.id === productId
         );
 
         const updatedItem = {
-        ...updatedItems[updatedItemIndex],
+            ...updatedItems[updatedItemIndex],
         };
 
         updatedItem.quantity += amount;
 
         if (updatedItem.quantity <= 0) {
-        updatedItems.splice(updatedItemIndex, 1);
+            updatedItems.splice(updatedItemIndex, 1);
         } else {
-        updatedItems[updatedItemIndex] = updatedItem;
+            updatedItems[updatedItemIndex] = updatedItem;
         }
 
         return {
-        items: updatedItems,
+            ...state,
+            items: updatedItems,
         };
-    });
+    }
+
+    return state;
+}
+
+export default function CartContextProvider({ children }) {
+    const [ shoppingCartState, shoppingCartDispatch ] = useReducer(
+        shoppingCartReducer,
+        {
+            items: [],
+        }
+    );
+
+    function handleAddItemToCart(id) {
+        shoppingCartDispatch({
+            type: 'ADD_ITEM',
+            payload: id
+        });
+    };
+
+    function handleUpdateCartItemQuantity(productId, amount) {
+        shoppingCartDispatch({
+            type: 'UPDATE_ITEM',
+            payload: {
+                productId,
+                amount
+            }
+        });
     };
 
     const ctxValue = {
-        items: shoppingCart.items,
+        items: shoppingCartState.items,
         addItemToCart: handleAddItemToCart,
         updateCartItemQuantity: handleUpdateCartItemQuantity
     };
